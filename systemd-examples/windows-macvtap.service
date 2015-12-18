@@ -1,0 +1,34 @@
+[Unit]
+Description=KVM with Windows using macvtap
+Wants=network-online.target docker.service
+Requires=docker.service
+After=network-online.target
+
+[Service]
+Restart=on-abort
+RestartSec=30s
+SuccessExitStatus=2
+
+EnvironmentFile=/etc/environment
+Environment=VM_NAME=windows-1
+Environment=VM_MAC=52:54:00:12:34:56
+Environment=VM_TAP=macvtap0
+Environment=VM_PASSWORD=geheim
+
+ExecStartPre=/bin/sh -c "[ -d /run/kvm ] || mkdir /run/kvm && chmod 0700 /run/kvm"
+ExecStartPre=/bin/sh -c "/bin/ip link add link ext0 name ${VM_TAP} type macvtap && /bin/ip link set ${VM_TAP} address ${VM_MAC} up"
+ExecStart=/bin/docker run -t --rm --privileged \
+  --net host \
+  -v /var/cache/media:/var/cache/media \
+  -v /var/vm:/var/vm \
+  -v /run/kvm:/run/kvm \
+  wmark/docker-kvm \
+    windows ${COREOS_PUBLIC_IPV4} 5900 "${VM_PASSWORD}" ${VM_MAC} ${VM_TAP} "${VM_NAME}" 8192 Windows-10-threshold-2-take-1.iso
+
+ExecReload=/bin/sh -c "echo system_reset | socat - UNIX-CONNECT:/run/kvm/${VM_NAME}.monitor"
+
+ExecStop=/bin/sh -c "echo system_powerdown | socat - UNIX-CONNECT:/run/kvm/${VM_NAME}.monitor"
+ExecStopPost=/bin/sh -c "/bin/ip link set dev ${VM_TAP} down && /bin/ip link del ${VM_TAP}"
+
+[Install]
+WantedBy=multi-user.target

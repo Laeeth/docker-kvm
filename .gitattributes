@@ -1,0 +1,5 @@
+* text eol=lf
+
+*.md text=auto
+README text=auto
+
