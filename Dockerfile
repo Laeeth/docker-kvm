@@ -1,20 +1,8 @@
-FROM		ubuntu-debootstrap:15.10
+FROM		blitznote/debootstrap-amd64:16.04
 MAINTAINER	W. Mark Kubacki <wmark@hurrikane.de>
 
-RUN printf "\tif [[ \${EUID} == 0 ]] ; then\n\t\tPS1='\\[\\\\033[01;31m\\]\\h\\[\\\\033[01;96m\\] \\W \\$\\[\\\\033[00m\\] '\n\telse\n\t\tPS1='\\[\\\\033[01;32m\\]\\u@\\h\\[\\\\033[01;96m\\] \\w \\$\\[\\\\033[00m\\] '\n\tfi\n" >> /etc/bash.bashrc \
- && sed -i -e "/color_prompt.*then/,/fi/{N;d}" /root/.bashrc \
- && printf 'alias dir="ls -hlAS --time-style=long-iso --color"\n' >> /etc/bash.bashrc \
- && update-locale LANG=C.UTF-8
-
-RUN DEBIAN_FRONTEND=noninteractive \
-    apt-get -qq update \
- && apt-get -y -qq install apt-transport-https \
- && printf "deb https://s.blitznote.com/debs/ubuntu/amd64/ all/" > /etc/apt/sources.list.d/blitznote.list \
- && printf 'Package: *\nPin: origin "s.blitznote.com"\nPin-Priority: 510\n' > /etc/apt/preferences.d/prefer-blitznote \
- && printf "deb http://de.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse\ndeb-src http://de.archive.ubuntu.com/ubuntu/ xenial main restricted universe multiverse" > /etc/apt/sources.list.d/ubuntu-xenial.list \
- && apt-get -qq update \
- && apt-get install -y --force-yes curl ca-certificates signify-linux \
- && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN printf "deb [ trusted=yes arch=amd64 ] https://s.blitznote.com/debs/ubuntu/amd64/ all/" > /etc/apt/sources.list.d/blitznote.list \
+ && printf 'Package: *\nPin: origin "s.blitznote.com"\nPin-Priority: 510\n' > /etc/apt/preferences.d/prefer-blitznote
 
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get -qq update \
