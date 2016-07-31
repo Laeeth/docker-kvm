@@ -1,46 +1,67 @@
 QEMU/KVM using macvtap, in Docker
 =================================
 
-[![](https://badge.imagelayers.io/wmark/docker-kvm:latest.svg)](https://imagelayers.io/?images=wmark/docker-kvm:latest 'image stats by imagelayers.io')
+Works with CoreOS and Ubuntu.
 
-Works on CoreOS and BaseOS.
+- Request a »virtual MAC« for the guest, if you run this in a datacenter.  
+  If this is in your LAN, then just pick an unique MAC address.
+- Prepare a Windows (or Linux, or BSD) ISO.
+- Get the **Remote Viewer** here: http://www.spice-space.org/download.html
 
-- Request a »virtual MA« for the desiredIP address, if you run this in a datacenter.
-  You don't need to do this in your LAN. In that case, just pick a unique MAC address.
-- Link a macvtap device to your external NIC. For example ```link ext0 name ${VM_TAP}```.
-- … pass its name to the Docker container, which in turn re-creates the corresponding ```/dev/tap*``` device.
+## Example: Windows 10
+
+Prepare the host:
 
 ```bash
-ip link add link ext0 name macvtap0 type macvtap
-ip link set macvtap0 address 52:54:00:12:34:56 up
-ip link show macvtap0
+mkdir -p /var/vm /run/kvm
+chattr -R +C /var/vm
+chmod 0700 /run/kvm
 
-# That's what happens within the Docker container:
-#   read MAJOR MINOR < <(cat /sys/devices/virtual/net/macvtap0/tap*/dev | tr ':' ' ')
-#   mknod /dev/tap-vm c ${MAJOR} ${MINOR}
+mkdir /var/cache/media
+cd /var/cache/media
+# download, for example, a Windows10.iso
 
-/bin/docker run -t --rm --privileged \
-  --net host \
-  -v /var/cache/media:/var/cache/media \
-  -v /var/vm:/var/vm \
-  -v /run/kvm:/run/kvm \
-  wmark/docker-kvm \
-    -cpu host -m $((16 * 8 * 128)) -smp cpus=1,cores=2,threads=4 -usbdevice tablet \
-    -device qxl-vga,vgamem_mb=32 \
-    -device virtio-serial \
-    -chardev spicevmc,id=vdagent,name=vdagent \
-    -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
-    -net nic,model=virtio,macaddr=52:54:00:12:34:56 -net tap,fd=3 3<>/dev/tap-vm \
-    -drive file=/var/vm/disks/windows-1.img,if=virtio,index=0,media=disk \
-    -drive file=/var/cache/media/Windows-10-threshold-2-take-1.iso,index=2,media=cdrom,readonly \
-    -drive file=/var/cache/media/virtio-win.iso,index=3,media=cdrom,readonly \
-    -boot once=d \
-    -name "windows-1"
+if grep -q CoreOS /etc/os-release; then
+  mkdir -p /opt/bin
 
-# Get the »remote viewer« from: https://virt-manager.org/download/
+  curl -fLR -o /opt/bin/plzip \
+    https://s.blitznote.com/debs/ubuntu/amd64/plzip
+  ln -s plzip /opt/bin/lzip
+  chmod a+x /opt/bin/plzip
 
-ip link set dev macvtap0 down
-ip link del macvtap0
+  curl -fLsS -o - \
+    https://s.blitznote.com/os/coreos/netcat.tar.lz \
+  | tar --use-compress-program=/opt/bin/lzip -xv -C /
+  ldconfig
+else
+  apt-get -y install netcat-openbsd
+fi
 ```
 
-See the **systemd-examples** folder for how to automate this.
+Install the *systemd unit file* which takes care of starting, resetting, and stopping the KVM:
+
+```bash
+cp -a systemd-examples/windows-macvtap.service /etc/systemd/system/kvm-windows-1.service
+systemctl daemon-reload
+
+systemctl edit --full kvm-windows-1.service
+# More than a single VM? change port 5900 to something else.
+# Customize all "VM_*" values.
+# 'ext0' on my host might be 'eth0' on yours - change that in the file accordingly.
+# Replace ${COREOS_PUBLIC_IPV4} by 127.0.0.1 or your host's IP address for the remote viewer endpoint.
+```
+
+And finally, start the KVM and point the **Remote Viewer** to `spice://<host ip>:5900`
+
+```bash
+systemctl start kvm-windows-1.service
+systemctl enable kvm-windows-1.service
+```
+
+You will need to install Windows (or Linux, or BSD) if the virtual HDD is empty.
+The *virtio* drivers for Windows will be available in the seconds virtual DVD drive.
+Have the Windows installer load **NetKVM** first, even though it is no storage driver;
+then **viostor**. With *Windows 10* point to subfolder `2k12R2/amd64`.
+
+Once the system is ready you can install all remaining drivers by right-clicking on the corresponding INF file.
+Don't forget the *guest agent*!
