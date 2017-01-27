@@ -1,10 +1,9 @@
-FROM blitznote/debootstrap-amd64:16.04
+FROM blitznote/debootstrap-amd64:16.10
 MAINTAINER W. Mark Kubacki <wmark@hurrikane.de>
 
 RUN apt-get -q update \
  && apt-get -y install \
         kvm qemu-kvm bridge-utils psmisc \
-        unzip unrar-free lbzip2 pigz plzip p7zip-full \
  && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN update-alternatives --install /usr/bin/qemu qemu /usr/bin/qemu-system-x86_64-spice 10
