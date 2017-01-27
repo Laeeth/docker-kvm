@@ -1,8 +1,11 @@
 #!/bin/bash
 
-set -exo pipefail
+set -eo pipefail
+if [[ ! -z ${debug+x} ]]; then
+  set -x
+fi
 
-if [ ! -c /dev/kvm ]; then
+if [[ ! -c "/dev/kvm" ]]; then
   rm /dev/kvm || true
   set +e
   read -r NODNUM _ < <(grep '\<kvm\>' /proc/misc)
@@ -10,17 +13,17 @@ if [ ! -c /dev/kvm ]; then
   set -e
 else
   if ! dd if=/dev/kvm count=0 2>/dev/null; then
-    >&2 printf "Cannot open /dev/kvm - please run this in a privileged context."
+    >&2 printf "Cannot open /dev/kvm - please run this in a privileged context.\n"
     # see: /usr/include/sysexits.h: EX_OSFILE
     exit 72
   fi
 fi
 
-if [ -n "$BRIDGE_IF" ]; then
+if [[ ! -z "${BRIDGE_IF+x}" ]]; then
   printf "allow ${BRIDGE_IF}" >/etc/qemu/bridge.conf
 
   # Make sure we have the tun device node
-  if [ ! -c /dev/net/tun ]; then
+  if [[ ! -c "/dev/net/tun" ]]; then
     rm /dev/net/tun || true
     mkdir -p /dev/net
     set +e
@@ -35,14 +38,13 @@ fi
 # example:
 #   windows ${COREOS_PUBLIC_IPV4} 5900 geheim 52:54:00:xx:xx:xx macvtap0 "windows-1" $((16 * 8 * 1024)) Windows-10-threshold-2-take-1.iso
 
-if [ "$1" == "windows" ]; then
+if (( $# >= 9 )) && [[ "$1" == "windows" ]]; then
   curl --silent --show-error --fail --location --remote-time \
-    --time-cond /var/cache/media/virtio-win.iso \
-    --output    /var/cache/media/virtio-win.iso \
+    --{time-cond,output}/var/cache/media/virtio-win.iso \
     https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso \
   || true
 
-  if [ ! -e /var/vm/disks/"$7".img ]; then
+  if [[ ! -e /var/vm/disks/"$7".img ]]; then
     mkdir -p /var/vm/disks
     chmod 0700 /var/vm/disks
     qemu-img create -f qcow2 /var/vm/disks/"$7".img 80G
@@ -70,4 +72,3 @@ if [ "$1" == "windows" ]; then
 else
   exec /usr/bin/qemu -enable-kvm "$@"
 fi
-
