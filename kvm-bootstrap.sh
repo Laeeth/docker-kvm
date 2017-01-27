@@ -51,13 +51,15 @@ if (( $# >= 8 )) && [[ "$1" == "windows" ]]; then
 
 #   -device virtio-balloon,id=balloon0,bus=pci.0,addr=0x7 \ Windows 10 won't start with this
 
-  : ${ncores:="4"}
-  if (( $(nproc) > 16 )); then
-    # MCC or HCC cpu(s)
-    if (( $(nproc) > 20)); then
-      let ncores="$[ $(nproc --ignore 4)/2 ]"
-    else
-      let ncores="$(nproc --ignore 2)"
+  if [[ -z ${ncores+x} ]]; then
+    : ${ncores:="4"}
+    if (( $(nproc) > 16 )); then
+      # MCC or HCC cpu(s)
+      if (( $(nproc) > 20)); then
+        let ncores="$[ $(nproc --ignore 4)/2 ]"
+      else
+        let ncores="$(nproc --ignore 2)"
+      fi
     fi
   fi
 
