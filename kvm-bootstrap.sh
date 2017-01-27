@@ -39,10 +39,6 @@ fi
 #   windows ${COREOS_PUBLIC_IPV4} 5900 geheim 52:54:00:xx:xx:xx macvtap0 "windows-1" $((16 * 8 * 1024)) Windows-10-threshold-2-take-1.iso
 
 if (( $# >= 8 )) && [[ "$1" == "windows" ]]; then
-  curl --silent --show-error --fail --location --remote-time \
-    --{time-cond,output}/var/cache/media/virtio-win.iso \
-    https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso \
-  || true
 
   if [[ ! -e /var/vm/disks/"$7".img ]]; then
     mkdir -p /var/vm/disks
@@ -67,7 +63,13 @@ if (( $# >= 8 )) && [[ "$1" == "windows" ]]; then
 
   drives=()
   drives+=("-drive" "file=/var/vm/disks/$7.img,if=virtio,index=0,media=disk")
-  drives+=("-drive" "file=/var/cache/media/virtio-win.iso,index=3,media=cdrom,readonly")
+  if [[ -s /var/cache/media/virtio-win.iso ]]; then
+    drives+=("-drive" "file=/var/cache/media/virtio-win.iso,index=3,media=cdrom,readonly")
+  else
+    >&2 printf "Virtio drivers not found in: %s\n" "/var/cache/media/virtio-win.iso"
+    >&2 printf "Probably okay if this is no Windows, else download them from here:\n"
+    >&2 printf "  https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso\n"
+  fi
   if (( $# >= 9 )); then
     if [[ -s "/var/cache/media/$9" ]]; then
       drives+=("-drive" "file=/var/cache/media/$9,index=2,media=cdrom,readonly")
