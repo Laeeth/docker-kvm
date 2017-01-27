@@ -81,7 +81,7 @@ if (( $# >= 8 )) && [[ "$1" == "windows" ]]; then
     fi
   fi
   spice=()
-  spice+=("-vga" "none" "-device qxl-vga,vgamem_mb=32")
+  spice+=("-vga" "qxl")
   spice+=("-spice" "addr=$2,port=$3,password=$4")
   spice+=("-chardev" "spicevmc,id=vdagent,name=vdagent")
   spice+=("-device" "virtserialport,chardev=vdagent,name=com.redhat.spice.0")
